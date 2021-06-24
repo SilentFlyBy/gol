@@ -1,5 +1,3 @@
-use std::{borrow::BorrowMut, thread::current};
-
 pub const CHUNK_LENGTH: usize = 100;
 
 pub struct Cell {
