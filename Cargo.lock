@@ -72,14 +72,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gol"
-version = "0.1.0"
-dependencies = [
- "gl",
- "glfw",
-]
-
-[[package]]
 name = "khronos_api"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -169,3 +161,11 @@ name = "xml-rs"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b07db065a5cf61a7e4ba64f29e67db906fb1787316516c4e6e5ff0fea1efcd8a"
+
+[[package]]
+name = "yagol"
+version = "0.1.0"
+dependencies = [
+ "gl",
+ "glfw",
+]

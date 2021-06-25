@@ -34,10 +34,10 @@ const FRAGMENT_SHADER_SOURCE: &str = r#"
     }
 "#;
 
-const vertex_size: usize = 2;
-const color_size: usize = 1;
-const cell_size: usize = 2 * 3 * (vertex_size + color_size);
-const vertex_array_size: usize = 100 * 100 * cell_size;
+const VERTEX_SIZE: usize = 2;
+const COLOR_SIZE: usize = 1;
+const CELL_SIZE: usize = 2 * 3 * (VERTEX_SIZE + COLOR_SIZE);
+const VERTEX_ARRAY_SIZE: usize = 100 * 100 * CELL_SIZE;
 
 fn main() {
     let chunk_grid = ChunkGrid::new();
@@ -49,7 +49,7 @@ fn main() {
     #[cfg(target_os = "macos")]
     glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
 
-    let (mut window, events) = glfw.create_window(300, 300, "Hello this is window", glfw::WindowMode::Windowed)
+    let (mut window, events) = glfw.create_window(800, 800, "yagol", glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
 
     window.make_current();
@@ -59,11 +59,10 @@ fn main() {
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
 
-    let mut vtx_arr: [f32; vertex_array_size] = [0.0; vertex_array_size];
+    let mut vtx_arr: [f32; VERTEX_ARRAY_SIZE] = [0.0; VERTEX_ARRAY_SIZE];
     update_vertex_array(&mut vtx_arr, &chunk_grid);
 
     let shader_program = setup_shaders();
-
     let vao = setup_vertex_buffer();
     update_vertex_buffer(vao, &vtx_arr);
 
@@ -79,7 +78,7 @@ fn main() {
             // draw our first triangle
             gl::UseProgram(shader_program);
             gl::BindVertexArray(vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, vertex_array_size as i32 / 2);
+            gl::DrawArrays(gl::TRIANGLES, 0, VERTEX_ARRAY_SIZE as i32 / 2);
             gl::BindVertexArray(0);
         }
         
@@ -154,11 +153,11 @@ fn setup_shaders() -> GLuint {
     shader_program
 }
 
-fn update_vertex_array(vtx_arr: &mut [f32; vertex_array_size], chunk_grid: &ChunkGrid) {
+fn update_vertex_array(vtx_arr: &mut [f32; VERTEX_ARRAY_SIZE], chunk_grid: &ChunkGrid) {
     for row in 0..100 {
         for col in 0..100 {               
-            let row_index = row * 100 * cell_size;
-            let cell_index = row_index + (col * cell_size);
+            let row_index = row * 100 * CELL_SIZE;
+            let cell_index = row_index + (col * CELL_SIZE);
 
             let x_pos = col as f32 / 100.0;
             let y_pos = row as f32 / 100.0;
@@ -229,7 +228,7 @@ fn setup_vertex_buffer() -> GLuint {
     return vao
 }
 
-fn update_vertex_buffer(vao: GLuint, vtx_arr: &[f32; vertex_array_size]) {
+fn update_vertex_buffer(vao: GLuint, vtx_arr: &[f32; VERTEX_ARRAY_SIZE]) {
     unsafe {
         gl::BindVertexArray(vao);
         gl::BufferData(gl::ARRAY_BUFFER,
