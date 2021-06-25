@@ -14,16 +14,23 @@ mod chunk;
 const VERTEX_SHADER_SOURCE: &str = r#"
     #version 330 core
     layout (location = 0) in vec2 aPos;
+    layout (location = 1) in float vertexActive;
+
+    out float fragmentActive;
+
     void main() {
-       gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
+        fragmentActive = vertexActive;
+        gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
     }
 "#;
 
 const FRAGMENT_SHADER_SOURCE: &str = r#"
     #version 330 core
+    in float fragmentActive;
     out vec4 FragColor;
+
     void main() {
-       FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+       FragColor = fragmentActive == 1.0 ? vec4(1.0f, 0.5f, 0.2f, 1.0f) : vec4(0.0f, 0.0f, 0.0f, 1.0f);
     }
 "#;
 
@@ -47,7 +54,8 @@ fn main() {
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
     const vertex_size: usize = 2;
-    const cell_size: usize = 2 * 3 * vertex_size;
+    const color_size: usize = 1;
+    const cell_size: usize = 2 * 3 * (vertex_size + color_size);
     const vertex_array_size: usize = 100 * 100 * cell_size;
 
     let (shader_program, vao) = unsafe {
@@ -100,6 +108,7 @@ fn main() {
         // HINT: type annotation is crucial since default for float literals is f64
 
         let mut vtx_arr: [f32; vertex_array_size] = [0.0; vertex_array_size];
+        let active = true;
 
         for row in 0..100 {
             for col in 0..100 {               
@@ -109,33 +118,42 @@ fn main() {
                 let x_pos = col as f32 / 100.0;
                 let y_pos = row as f32 / 100.0;
 
+                let active_value = if active {1.0} else {0.0};
+                println!("{}", active_value);
+
                 // FIRST TRIANGLE
 
                 // bottom left corner
                 vtx_arr[cell_index] = x_pos;
                 vtx_arr[cell_index + 1] = y_pos;
+                vtx_arr[cell_index + 2] = active_value;
 
                 // top left corner
-                vtx_arr[cell_index + 2] = x_pos;
-                vtx_arr[cell_index + 3] = y_pos + 0.01;
-
-                // top right corner
-                vtx_arr[cell_index + 4] = x_pos + 0.01;
-                vtx_arr[cell_index + 5] = y_pos + 0.01;
-
-                // SECOND TRIANGLE
+                vtx_arr[cell_index + 3] = x_pos;
+                vtx_arr[cell_index + 4] = y_pos + 0.01;
+                vtx_arr[cell_index + 5] = active_value;
 
                 // top right corner
                 vtx_arr[cell_index + 6] = x_pos + 0.01;
                 vtx_arr[cell_index + 7] = y_pos + 0.01;
+                vtx_arr[cell_index + 8] = active_value;
+
+                // SECOND TRIANGLE
+
+                // top right corner
+                vtx_arr[cell_index + 9] = x_pos + 0.01;
+                vtx_arr[cell_index + 10] = y_pos + 0.01;
+                vtx_arr[cell_index + 11] = active_value;
 
                 // bottom right corner
-                vtx_arr[cell_index + 8] = x_pos + 0.01;
-                vtx_arr[cell_index + 9] = y_pos;
+                vtx_arr[cell_index + 12] = x_pos + 0.01;
+                vtx_arr[cell_index + 13] = y_pos;
+                vtx_arr[cell_index + 14] = active_value;
 
                 // top left corner
-                vtx_arr[cell_index + 10] = x_pos;
-                vtx_arr[cell_index + 11] = y_pos;
+                vtx_arr[cell_index + 15] = x_pos;
+                vtx_arr[cell_index + 16] = y_pos;
+                vtx_arr[cell_index + 17] = active_value;
             }
         }
 
@@ -152,8 +170,10 @@ fn main() {
                        &vtx_arr[0] as *const f32 as *const c_void,
                        gl::STATIC_DRAW);
 
-        gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, 2 * mem::size_of::<GLfloat>() as GLsizei, ptr::null());
+        gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, 3 * mem::size_of::<GLfloat>() as GLsizei, ptr::null());
+        gl::VertexAttribPointer(1, 1, gl::FLOAT, gl::FALSE, 3 * mem::size_of::<GLfloat>() as GLsizei, (2 * std::mem::size_of::<f32>()) as *const gl::types::GLvoid);
         gl::EnableVertexAttribArray(0);
+        gl::EnableVertexAttribArray(1);
 
         // note that this is allowed, the call to gl::VertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
         gl::BindBuffer(gl::ARRAY_BUFFER, 0);
