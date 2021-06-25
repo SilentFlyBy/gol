@@ -40,42 +40,49 @@ const CELL_SIZE: usize = 2 * 3 * (VERTEX_SIZE + COLOR_SIZE);
 const VERTEX_ARRAY_SIZE: usize = 100 * 100 * CELL_SIZE;
 
 fn main() {
-    let chunk_grid = ChunkGrid::new();
-    chunk_grid.compute_next_generation(true);
-
+    let mut chunk_grid = ChunkGrid::new();
+    
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
     glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
     #[cfg(target_os = "macos")]
     glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
-
+    
     let (mut window, events) = glfw.create_window(800, 800, "yagol", glfw::WindowMode::Windowed)
-        .expect("Failed to create GLFW window.");
-
+    .expect("Failed to create GLFW window.");
+    
     window.make_current();
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
-
+    window.set_mouse_button_polling(true);
+    window.set_cursor_pos_polling(true);
+    
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
-
-
+    
+    
     let mut vtx_arr: [f32; VERTEX_ARRAY_SIZE] = [0.0; VERTEX_ARRAY_SIZE];
-    update_vertex_array(&mut vtx_arr, &chunk_grid);
-
+    
     let shader_program = setup_shaders();
     let vao = setup_vertex_buffer();
-    update_vertex_buffer(vao, &vtx_arr);
+    
+    
+    let mut generation = true;
 
-
+    chunk_grid.set_cell(5, 5, generation, false);
 
     while !window.should_close() {
-        process_events(&mut window, &events);
+        chunk_grid.compute_next_generation(generation);
+
+        update_vertex_array(&mut vtx_arr, &chunk_grid, generation);
+        update_vertex_buffer(vao, &vtx_arr);
+
+
+        process_events(&mut window, &events, &mut &chunk_grid);
         
         unsafe {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            // draw our first triangle
             gl::UseProgram(shader_program);
             gl::BindVertexArray(vao);
             gl::DrawArrays(gl::TRIANGLES, 0, VERTEX_ARRAY_SIZE as i32 / 2);
@@ -84,17 +91,20 @@ fn main() {
         
         window.swap_buffers();
         glfw.poll_events();
+
+        // generation = !generation;
     }
 }
 
-fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {
+fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>, chunk_grid: &ChunkGrid) {
     for (_, event) in glfw::flush_messages(events) {
         match event {
             glfw::WindowEvent::FramebufferSize(width, height) => {
                 // make sure the viewport matches the new window dimensions; note that width and
                 // height will be significantly larger than specified on retina displays.
                 unsafe { gl::Viewport(0, 0, width, height) }
-            }
+            },
+            glfw::WindowEvent::MouseButton(btn, action, mods) => (),
             glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
             _ => {}
         }
@@ -153,18 +163,21 @@ fn setup_shaders() -> GLuint {
     shader_program
 }
 
-fn update_vertex_array(vtx_arr: &mut [f32; VERTEX_ARRAY_SIZE], chunk_grid: &ChunkGrid) {
+fn update_vertex_array(vtx_arr: &mut [f32; VERTEX_ARRAY_SIZE], chunk_grid: &ChunkGrid, current: bool) {
     for row in 0..100 {
         for col in 0..100 {               
             let row_index = row * 100 * CELL_SIZE;
             let cell_index = row_index + (col * CELL_SIZE);
 
-            let x_pos = col as f32 / 100.0;
-            let y_pos = row as f32 / 100.0;
+            let x_pos = -1.0 + ((col as f32 / 100.0) * 2.0);
+            let y_pos =  1.0 - ((row as f32 / 100.0) * 2.0);
 
 
-            let cell_active = chunk_grid.get_cell(col as i64, row as i64, true) == Some(true);
+            let cell_active = chunk_grid.get_cell(col as i64, row as i64, current) == Some(true);
+            //let cell_active = ((col + row) % 2) == 0;
             let active_value = if cell_active {1.0} else {0.0};
+
+            let step_size: f32 = 0.02;
 
             // FIRST TRIANGLE
 
@@ -175,23 +188,23 @@ fn update_vertex_array(vtx_arr: &mut [f32; VERTEX_ARRAY_SIZE], chunk_grid: &Chun
 
             // top left corner
             vtx_arr[cell_index + 3] = x_pos;
-            vtx_arr[cell_index + 4] = y_pos + 0.01;
+            vtx_arr[cell_index + 4] = y_pos - step_size;
             vtx_arr[cell_index + 5] = active_value;
 
             // top right corner
-            vtx_arr[cell_index + 6] = x_pos + 0.01;
-            vtx_arr[cell_index + 7] = y_pos + 0.01;
+            vtx_arr[cell_index + 6] = x_pos + step_size;
+            vtx_arr[cell_index + 7] = y_pos - step_size;
             vtx_arr[cell_index + 8] = active_value;
 
             // SECOND TRIANGLE
 
             // top right corner
-            vtx_arr[cell_index + 9] = x_pos + 0.01;
-            vtx_arr[cell_index + 10] = y_pos + 0.01;
+            vtx_arr[cell_index + 9] = x_pos + step_size;
+            vtx_arr[cell_index + 10] = y_pos - step_size;
             vtx_arr[cell_index + 11] = active_value;
 
             // bottom right corner
-            vtx_arr[cell_index + 12] = x_pos + 0.01;
+            vtx_arr[cell_index + 12] = x_pos + step_size;
             vtx_arr[cell_index + 13] = y_pos;
             vtx_arr[cell_index + 14] = active_value;
 

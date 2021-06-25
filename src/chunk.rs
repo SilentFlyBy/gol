@@ -30,6 +30,14 @@ impl Chunk {
             grid: [[(true, false); CHUNK_LENGTH]; CHUNK_LENGTH],
         })
     }
+
+    fn set_cell(&mut self, x: usize, y: usize, current: bool, value: bool) {
+        if current {
+            self.grid[x][y].0 = value;
+        } else {
+            self.grid[x][y].1 = value;
+        }
+    }
 }
 
 pub struct ChunkGrid {
@@ -107,6 +115,68 @@ impl ChunkGrid {
         let cell_result = chunk.grid[x][y];
 
         return if cell.current {Some(cell_result.0)} else {Some(cell_result.1)}
+    }
+
+    pub fn set_cell(&mut self, cell_x: i64, cell_y: i64, cell_current: bool, value: bool) {
+        let cell = Cell{x: cell_x, y: cell_y, current: cell_current};
+        let y_dimension = match cell.y {
+            y if y >= 0 => &mut self.positive_chunk_rows,
+            y if y < 0 => &mut self.negative_chunk_rows,
+            _ => panic!("Keine Ahnung man!")
+        };
+
+        let chunk_y = cell.absolute_y() / CHUNK_LENGTH;
+
+        if chunk_y >= y_dimension.len() {
+            return
+        }
+
+        let row = match &mut y_dimension[chunk_y] {
+            Some(t) => t,
+            None => {
+                return
+            }
+        };
+
+        let x_dimension = match cell.x {
+            x if x >= 0 => &mut row.1,
+            y if y < 0 => &mut row.0,
+            _ => panic!(r#"¯\_(ツ)_/¯"#)
+        };
+
+        let arm = match x_dimension {
+            Some(x) => x,
+            None => {
+                return
+            }
+        };
+
+        let chunk_x = cell.absolute_x() / CHUNK_LENGTH;
+
+        if chunk_x >= arm.len() {
+            return
+        }
+
+        let chunk = match &mut arm[chunk_x] {
+            Some(c) => c.as_mut(),
+            None => {
+                return
+            }
+        };
+
+        let x = match cell.x {
+            x if x >= 0 => x as usize - (CHUNK_LENGTH * chunk_x),
+            x if x < 0 => (-x as usize) - (CHUNK_LENGTH * chunk_x),
+            _ => panic!(r#"¯\_(ツ)_/¯"#)
+        };
+
+        let y = match cell.y {
+            y if y >= 0 => y as usize - (CHUNK_LENGTH * chunk_y),
+            y if y < 0 => (-y as usize) - (CHUNK_LENGTH * chunk_y),
+            _ => panic!(r#"¯\_(ツ)_/¯"#)
+        };
+
+        chunk.set_cell(x, y, cell.current, value);
     }
 
     pub fn compute_next_generation(&self, current: bool) {
