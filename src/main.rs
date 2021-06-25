@@ -46,6 +46,10 @@ fn main() {
 
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
+    const vertex_size: usize = 2;
+    const cell_size: usize = 2 * 3 * vertex_size;
+    const vertex_array_size: usize = 100 * 100 * cell_size;
+
     let (shader_program, vao) = unsafe {
         // build and compile our shader program
         // ------------------------------------
@@ -94,11 +98,48 @@ fn main() {
         // set up vertex data (and buffer(s)) and configure vertex attributes
         // ------------------------------------------------------------------
         // HINT: type annotation is crucial since default for float literals is f64
-        let vertices: [f32; 6] = [
-            -0.5, -0.5, // left
-             0.5, -0.5,// right
-             0.0,  0.5 // top
-        ];
+
+        let mut vtx_arr: [f32; vertex_array_size] = [0.0; vertex_array_size];
+
+        for row in 0..100 {
+            for col in 0..100 {               
+                let row_index = row * 100 * cell_size;
+                let cell_index = row_index + (col * cell_size);
+
+                let x_pos = col as f32 / 100.0;
+                let y_pos = row as f32 / 100.0;
+
+                // FIRST TRIANGLE
+
+                // bottom left corner
+                vtx_arr[cell_index] = x_pos;
+                vtx_arr[cell_index + 1] = y_pos;
+
+                // top left corner
+                vtx_arr[cell_index + 2] = x_pos;
+                vtx_arr[cell_index + 3] = y_pos + 0.01;
+
+                // top right corner
+                vtx_arr[cell_index + 4] = x_pos + 0.01;
+                vtx_arr[cell_index + 5] = y_pos + 0.01;
+
+                // SECOND TRIANGLE
+
+                // top right corner
+                vtx_arr[cell_index + 6] = x_pos + 0.01;
+                vtx_arr[cell_index + 7] = y_pos + 0.01;
+
+                // bottom right corner
+                vtx_arr[cell_index + 8] = x_pos + 0.01;
+                vtx_arr[cell_index + 9] = y_pos;
+
+                // top left corner
+                vtx_arr[cell_index + 10] = x_pos;
+                vtx_arr[cell_index + 11] = y_pos;
+            }
+        }
+
+
         let (mut vbo, mut vao) = (0, 0);
         gl::GenVertexArrays(1, &mut vao);
         gl::GenBuffers(1, &mut vbo);
@@ -107,8 +148,8 @@ fn main() {
 
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
         gl::BufferData(gl::ARRAY_BUFFER,
-                       (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                       &vertices[0] as *const f32 as *const c_void,
+                       (vtx_arr.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                       &vtx_arr[0] as *const f32 as *const c_void,
                        gl::STATIC_DRAW);
 
         gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, 2 * mem::size_of::<GLfloat>() as GLsizei, ptr::null());
@@ -138,7 +179,7 @@ fn main() {
             // draw our first triangle
             gl::UseProgram(shader_program);
             gl::BindVertexArray(vao); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-            gl::DrawArrays(gl::TRIANGLES, 0, 3);
+            gl::DrawArrays(gl::TRIANGLES, 0, vertex_array_size as i32 / 2);
             // glBindVertexArray(0); // no need to unbind it every time
         }
         
