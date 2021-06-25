@@ -53,8 +53,56 @@ impl ChunkGrid {
         }
     }
 
-    pub fn get_cell(&self, cell_x: i64, cell_y: i64, cell_current: bool) -> Option<bool> {
-        let cell = Cell{x: cell_x, y: cell_y, current: cell_current};
+    fn get_chunk_mut(&mut self, cell: &Cell) -> Option<&mut Box<Chunk>> {
+        let y_dimension = match cell.y {
+            y if y >= 0 => &mut self.positive_chunk_rows,
+            y if y < 0 => &mut self.negative_chunk_rows,
+            _ => panic!("Keine Ahnung man!")
+        };
+
+        let chunk_y = cell.absolute_y() / CHUNK_LENGTH;
+
+        if chunk_y >= y_dimension.len() {
+            return None
+        }
+
+        let row = match &mut y_dimension[chunk_y] {
+            Some(t) => t,
+            None => {
+                return None
+            }
+        };
+
+        let x_dimension = match cell.x {
+            x if x >= 0 => &mut row.1,
+            y if y < 0 => &mut row.0,
+            _ => panic!(r#"¯\_(ツ)_/¯"#)
+        };
+
+        let arm = match x_dimension {
+            Some(x) => x,
+            None => {
+                return None
+            }
+        };
+
+        let chunk_x = cell.absolute_x() / CHUNK_LENGTH;
+
+        if chunk_x >= arm.len() {
+            return None
+        }
+
+        let chunk = match &mut arm[chunk_x] {
+            Some(c) => c,
+            None => {
+                return None
+            }
+        };
+
+        return Some(chunk);
+    }
+
+    fn get_chunk(&self, cell: &Cell) -> Option<&Box<Chunk>> {
         let y_dimension = match cell.y {
             y if y >= 0 => &self.positive_chunk_rows,
             y if y < 0 => &self.negative_chunk_rows,
@@ -64,13 +112,13 @@ impl ChunkGrid {
         let chunk_y = cell.absolute_y() / CHUNK_LENGTH;
 
         if chunk_y >= y_dimension.len() {
-            return None;
+            return None
         }
 
         let row = match &y_dimension[chunk_y] {
             Some(t) => t,
             None => {
-                return None;
+                return None
             }
         };
 
@@ -83,7 +131,7 @@ impl ChunkGrid {
         let arm = match x_dimension {
             Some(x) => x,
             None => {
-                return None;
+                return None
             }
         };
 
@@ -94,11 +142,24 @@ impl ChunkGrid {
         }
 
         let chunk = match &arm[chunk_x] {
-            Some(c) => c.as_ref(),
+            Some(c) => c,
             None => {
-                return None;
+                return None
             }
         };
+
+        return Some(chunk);
+    }
+
+    pub fn get_cell(&self, cell_x: i64, cell_y: i64, cell_current: bool) -> Option<bool> {
+        let cell = Cell{x: cell_x, y: cell_y, current: cell_current};
+        let chunk = match self.get_chunk(&cell) {
+            Some(c) => c.as_ref(),
+            None => return None
+        };
+
+        let chunk_x = cell.absolute_y() / CHUNK_LENGTH;
+        let chunk_y = cell.absolute_y() / CHUNK_LENGTH;
 
         let x = match cell.x {
             x if x >= 0 => x as usize - (CHUNK_LENGTH * chunk_x),
@@ -119,50 +180,13 @@ impl ChunkGrid {
 
     pub fn set_cell(&mut self, cell_x: i64, cell_y: i64, cell_current: bool, value: bool) {
         let cell = Cell{x: cell_x, y: cell_y, current: cell_current};
-        let y_dimension = match cell.y {
-            y if y >= 0 => &mut self.positive_chunk_rows,
-            y if y < 0 => &mut self.negative_chunk_rows,
-            _ => panic!("Keine Ahnung man!")
-        };
-
-        let chunk_y = cell.absolute_y() / CHUNK_LENGTH;
-
-        if chunk_y >= y_dimension.len() {
-            return
-        }
-
-        let row = match &mut y_dimension[chunk_y] {
-            Some(t) => t,
-            None => {
-                return
-            }
-        };
-
-        let x_dimension = match cell.x {
-            x if x >= 0 => &mut row.1,
-            y if y < 0 => &mut row.0,
-            _ => panic!(r#"¯\_(ツ)_/¯"#)
-        };
-
-        let arm = match x_dimension {
-            Some(x) => x,
-            None => {
-                return
-            }
-        };
-
-        let chunk_x = cell.absolute_x() / CHUNK_LENGTH;
-
-        if chunk_x >= arm.len() {
-            return
-        }
-
-        let chunk = match &mut arm[chunk_x] {
+        let chunk = match self.get_chunk_mut(&cell) {
             Some(c) => c.as_mut(),
-            None => {
-                return
-            }
+            None => return
         };
+
+        let chunk_x = cell.absolute_y() / CHUNK_LENGTH;
+        let chunk_y = cell.absolute_y() / CHUNK_LENGTH;
 
         let x = match cell.x {
             x if x >= 0 => x as usize - (CHUNK_LENGTH * chunk_x),
