@@ -27,7 +27,7 @@ type ChunkRow = Vec<Option<(Option<ChunkRowDimension>, Option<ChunkRowDimension>
 impl Chunk {
     pub fn new() -> Box<Chunk> {
         return Box::new(Chunk {
-            grid: [[(false, false); CHUNK_LENGTH]; CHUNK_LENGTH],
+            grid: [[(true, false); CHUNK_LENGTH]; CHUNK_LENGTH],
         })
     }
 }
