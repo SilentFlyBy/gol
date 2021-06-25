@@ -45,7 +45,8 @@ impl ChunkGrid {
         }
     }
 
-    pub fn get_cell(&self, cell: Cell) -> Option<bool> {
+    pub fn get_cell(&self, cell_x: i64, cell_y: i64, cell_current: bool) -> Option<bool> {
+        let cell = Cell{x: cell_x, y: cell_y, current: cell_current};
         let y_dimension = match cell.y {
             y if y >= 0 => &self.positive_chunk_rows,
             y if y < 0 => &self.negative_chunk_rows,
@@ -153,7 +154,7 @@ impl ChunkGrid {
                     continue;
                 }
     
-                if self.get_cell(Cell{x, y, current: cell.current}) == Some(true) {
+                if self.get_cell(x, y, cell.current) == Some(true) {
                     neighbor_counter += 1;
                 }
     

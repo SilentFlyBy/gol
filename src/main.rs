@@ -30,7 +30,7 @@ const FRAGMENT_SHADER_SOURCE: &str = r#"
     out vec4 FragColor;
 
     void main() {
-       FragColor = fragmentActive == 1.0 ? vec4(1.0f, 0.5f, 0.2f, 1.0f) : vec4(0.0f, 0.0f, 0.0f, 1.0f);
+       FragColor = fragmentActive == 1.0 ? vec4(1.0f, 0.5f, 0.2f, 1.0f) : vec4(0.2f, 0.3f, 0.3f, 1.0f);
     }
 "#;
 
@@ -108,7 +108,6 @@ fn main() {
         // HINT: type annotation is crucial since default for float literals is f64
 
         let mut vtx_arr: [f32; vertex_array_size] = [0.0; vertex_array_size];
-        let active = true;
 
         for row in 0..100 {
             for col in 0..100 {               
@@ -118,8 +117,9 @@ fn main() {
                 let x_pos = col as f32 / 100.0;
                 let y_pos = row as f32 / 100.0;
 
-                let active_value = if active {1.0} else {0.0};
-                println!("{}", active_value);
+
+                let cell_active = chunk_grid.get_cell(col as i64, row as i64, true) == Some(true);
+                let active_value = if cell_active {1.0} else {0.0};
 
                 // FIRST TRIANGLE
 
