@@ -3,13 +3,14 @@ extern crate glfw;
 extern crate gl;
 use gl::types::*;
 
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::os::raw::c_void;
 use glfw::{Action, Context, Key};
 use std::{ptr, sync::mpsc::Receiver, mem, str};
-use chunk::ChunkGrid;
+use grid::Grid;
 
-mod chunk;
+mod grid;
 
 const VERTEX_SHADER_SOURCE: &str = r#"
     #version 330 core
@@ -40,7 +41,7 @@ const CELL_SIZE: usize = 2 * 3 * (VERTEX_SIZE + COLOR_SIZE);
 const VERTEX_ARRAY_SIZE: usize = 100 * 100 * CELL_SIZE;
 
 fn main() {
-    let mut chunk_grid = ChunkGrid::new();
+    let mut grid = Grid::new();
     
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
@@ -65,19 +66,32 @@ fn main() {
     let shader_program = setup_shaders();
     let vao = setup_vertex_buffer();
     
-    
-    let mut generation = true;
 
-    chunk_grid.set_cell(5, 5, generation, false);
+    grid.set_cell(5, 5, true);
+    grid.set_cell(4, 5, true);
+    grid.set_cell(3, 5, true);
+    grid.set_cell(3, 6, true);
+    grid.set_cell(3, 7, true);
+    grid.set_cell(4, 7, true);
+    grid.set_cell(5, 7, true);
+
+    grid.set_cell(7, 7, true);
+    grid.set_cell(8, 7, true);
+    grid.set_cell(9, 7, true);
+    grid.set_cell(9, 6, true);
+    grid.set_cell(9, 5, true);
+    grid.set_cell(8, 5, true);
+    grid.set_cell(7, 5, true);
+
 
     while !window.should_close() {
-        chunk_grid.compute_next_generation(generation);
+        grid.calc_next_generation();
 
-        update_vertex_array(&mut vtx_arr, &chunk_grid, generation);
+        update_vertex_array(&mut vtx_arr, &grid);
         update_vertex_buffer(vao, &vtx_arr);
 
 
-        process_events(&mut window, &events, &mut &chunk_grid);
+        process_events(&mut window, &events);
         
         unsafe {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
@@ -91,12 +105,10 @@ fn main() {
         
         window.swap_buffers();
         glfw.poll_events();
-
-        // generation = !generation;
     }
 }
 
-fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>, chunk_grid: &ChunkGrid) {
+fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {
     for (_, event) in glfw::flush_messages(events) {
         match event {
             glfw::WindowEvent::FramebufferSize(width, height) => {
@@ -163,7 +175,7 @@ fn setup_shaders() -> GLuint {
     shader_program
 }
 
-fn update_vertex_array(vtx_arr: &mut [f32; VERTEX_ARRAY_SIZE], chunk_grid: &ChunkGrid, current: bool) {
+fn update_vertex_array(vtx_arr: &mut [f32; VERTEX_ARRAY_SIZE], grid: &Grid) {
     for row in 0..100 {
         for col in 0..100 {               
             let row_index = row * 100 * CELL_SIZE;
@@ -173,7 +185,7 @@ fn update_vertex_array(vtx_arr: &mut [f32; VERTEX_ARRAY_SIZE], chunk_grid: &Chun
             let y_pos =  1.0 - ((row as f32 / 100.0) * 2.0);
 
 
-            let cell_active = chunk_grid.get_cell(col as i64, row as i64, current) == Some(true);
+            let cell_active = grid.get_cell(row as i64, col as i64);
             //let cell_active = ((col + row) % 2) == 0;
             let active_value = if cell_active {1.0} else {0.0};
 
