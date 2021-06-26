@@ -3,9 +3,13 @@ extern crate glfw;
 extern crate gl;
 use gl::types::*;
 
-use std::collections::HashMap;
+extern crate crossbeam_channel;
+
+use core::time;
 use std::ffi::CString;
 use std::os::raw::c_void;
+use std::thread;
+use std::time::Instant;
 use glfw::{Action, Context, Key};
 use std::{ptr, sync::mpsc::Receiver, mem, str};
 use grid::Grid;
@@ -34,11 +38,13 @@ const FRAGMENT_SHADER_SOURCE: &str = r#"
        FragColor = fragmentActive == 1.0 ? vec4(1.0f, 0.5f, 0.2f, 1.0f) : vec4(0.2f, 0.3f, 0.3f, 1.0f);
     }
 "#;
+const GRID_LENGTH: usize = 100;
 
 const VERTEX_SIZE: usize = 2;
 const COLOR_SIZE: usize = 1;
 const CELL_SIZE: usize = 2 * 3 * (VERTEX_SIZE + COLOR_SIZE);
-const VERTEX_ARRAY_SIZE: usize = 100 * 100 * CELL_SIZE;
+const VERTEX_ARRAY_SIZE: usize = GRID_LENGTH * GRID_LENGTH * CELL_SIZE;
+
 
 fn main() {
     let mut grid = Grid::new();
@@ -61,34 +67,38 @@ fn main() {
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
     
     
-    let mut vtx_arr: [f32; VERTEX_ARRAY_SIZE] = [0.0; VERTEX_ARRAY_SIZE];
-    
+    let mut vtx_arr: Vec<f32> = vec![0.0; VERTEX_ARRAY_SIZE];
     let shader_program = setup_shaders();
     let vao = setup_vertex_buffer();
     
+    
+    let (tx, rx) = crossbeam_channel::bounded(1);
+    thread::spawn(move || {
+        grid.set_cell(50, 50, true);
+        grid.set_cell(49, 50, true);
+        grid.set_cell(49, 49, true);
+        grid.set_cell(48, 50, true);
+        grid.set_cell(50, 51, true);
+        loop {
+            let now = Instant::now();
+            tx.try_send(grid.get_grid(0, 0, GRID_LENGTH));
+            grid.calc_next_generation();
+            thread::sleep(time::Duration::from_millis(10));
+            println!("elapsed: {}", now.elapsed().as_millis());
+        }
+    });
 
-    grid.set_cell(5, 5, true);
-    grid.set_cell(4, 5, true);
-    grid.set_cell(3, 5, true);
-    grid.set_cell(3, 6, true);
-    grid.set_cell(3, 7, true);
-    grid.set_cell(4, 7, true);
-    grid.set_cell(5, 7, true);
-
-    grid.set_cell(7, 7, true);
-    grid.set_cell(8, 7, true);
-    grid.set_cell(9, 7, true);
-    grid.set_cell(9, 6, true);
-    grid.set_cell(9, 5, true);
-    grid.set_cell(8, 5, true);
-    grid.set_cell(7, 5, true);
 
 
     while !window.should_close() {
-        grid.calc_next_generation();
-
-        update_vertex_array(&mut vtx_arr, &grid);
-        update_vertex_buffer(vao, &vtx_arr);
+        
+        match rx.try_recv() {
+            Ok(result) => {
+                update_vertex_array(&mut vtx_arr, result);
+                update_vertex_buffer(vao, &vtx_arr);
+            },
+            Err(_) => (),
+        }
 
 
         process_events(&mut window, &events);
@@ -175,17 +185,16 @@ fn setup_shaders() -> GLuint {
     shader_program
 }
 
-fn update_vertex_array(vtx_arr: &mut [f32; VERTEX_ARRAY_SIZE], grid: &Grid) {
-    for row in 0..100 {
-        for col in 0..100 {               
-            let row_index = row * 100 * CELL_SIZE;
+fn update_vertex_array(vtx_arr: &mut Vec<f32>, grid: Vec<bool>) {
+    for row in 0..GRID_LENGTH {
+        for col in 0..GRID_LENGTH {               
+            let row_index = row * GRID_LENGTH * CELL_SIZE;
             let cell_index = row_index + (col * CELL_SIZE);
 
-            let x_pos = -1.0 + ((col as f32 / 100.0) * 2.0);
-            let y_pos =  1.0 - ((row as f32 / 100.0) * 2.0);
+            let x_pos = -1.0 + ((col as f32 / GRID_LENGTH as f32) * 2.0);
+            let y_pos =  1.0 - ((row as f32 / GRID_LENGTH as f32) * 2.0);
 
-
-            let cell_active = grid.get_cell(row as i64, col as i64);
+            let cell_active = grid[(row * GRID_LENGTH) + col];
             //let cell_active = ((col + row) % 2) == 0;
             let active_value = if cell_active {1.0} else {0.0};
 
@@ -253,7 +262,7 @@ fn setup_vertex_buffer() -> GLuint {
     return vao
 }
 
-fn update_vertex_buffer(vao: GLuint, vtx_arr: &[f32; VERTEX_ARRAY_SIZE]) {
+fn update_vertex_buffer(vao: GLuint, vtx_arr: &Vec<f32>) {
     unsafe {
         gl::BindVertexArray(vao);
         gl::BufferData(gl::ARRAY_BUFFER,
