@@ -88,7 +88,7 @@ fn main() {
         }
     });
 
-
+    update_vertex_buffer(vao, &vtx_arr);
 
     while !window.should_close() {
         
