@@ -1,6 +1,8 @@
 extern crate glfw;
 
 extern crate gl;
+use std::sync::Arc;
+use std::sync::Mutex;
 use gl::types::*;
 
 extern crate crossbeam_channel;
@@ -10,7 +12,7 @@ use std::ffi::CString;
 use std::os::raw::c_void;
 use std::thread;
 use std::time::Instant;
-use glfw::{Action, Context, Key};
+use glfw::{Action, Context, Key, MouseButton};
 use std::{ptr, sync::mpsc::Receiver, mem, str};
 use grid::Grid;
 
@@ -45,6 +47,13 @@ const COLOR_SIZE: usize = 1;
 const CELL_SIZE: usize = 2 * 3 * (VERTEX_SIZE + COLOR_SIZE);
 const VERTEX_ARRAY_SIZE: usize = GRID_LENGTH * GRID_LENGTH * CELL_SIZE;
 
+struct InputStates {
+    mouse_x: f64,
+    mouse_y: f64,
+    mouse_move_x: f64,
+    mouse_move_y: f64,
+    mouse_left: bool
+}
 
 fn main() {
     let mut grid = Grid::new();
@@ -71,8 +80,20 @@ fn main() {
     let shader_program = setup_shaders();
     let vao = setup_vertex_buffer();
     
+    let mut button_states = InputStates {mouse_x: 0.0, mouse_y: 0.0, mouse_move_x: 0.0, mouse_move_y: 0.0, mouse_left: false};
+    let mut mouse_last_x: f64 = 0.0;
+    let mut mouse_last_y: f64 = 0.0;
+    let mut mouse_last_left = false;
+    
+    
+    let mut view_x: Arc<Mutex<i64>> = Arc::new(Mutex::new(0));
+    let mut view_y: Arc<Mutex<i64>> = Arc::new(Mutex::new(0));
+    
     
     let (tx, rx) = crossbeam_channel::bounded(1);
+    let view_x_clone = Arc::clone(&view_x);
+    let view_y_clone = Arc::clone(&view_y);
+
     thread::spawn(move || {
         grid.set_cell(50, 50, true);
         grid.set_cell(49, 50, true);
@@ -81,12 +102,15 @@ fn main() {
         grid.set_cell(50, 51, true);
         loop {
             let now = Instant::now();
-            tx.try_send(grid.get_grid(0, 0, GRID_LENGTH));
+            let x = view_x_clone.lock().unwrap().clone();
+            let y = view_y_clone.lock().unwrap().clone();
+            tx.try_send(grid.get_grid(y, x, GRID_LENGTH));
             grid.calc_next_generation();
             thread::sleep(time::Duration::from_millis(10));
             println!("elapsed: {}", now.elapsed().as_millis());
         }
     });
+
 
     update_vertex_buffer(vao, &vtx_arr);
 
@@ -100,8 +124,25 @@ fn main() {
             Err(_) => (),
         }
 
+        process_events(&mut window, &events, &mut button_states);
 
-        process_events(&mut window, &events);
+
+        if button_states.mouse_left {
+            if !mouse_last_left {
+                mouse_last_x = button_states.mouse_x;
+                mouse_last_y = button_states.mouse_y;
+            }
+
+            let mut x = view_x.lock().unwrap();
+            let mut y = view_y.lock().unwrap();
+            *x -= (button_states.mouse_x - mouse_last_x).floor() as i64;
+            *y -= (button_states.mouse_y - mouse_last_y).floor() as i64;
+        }
+
+        mouse_last_left = button_states.mouse_left;
+        mouse_last_x = button_states.mouse_x;
+        mouse_last_y = button_states.mouse_y;
+
         
         unsafe {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
@@ -118,7 +159,7 @@ fn main() {
     }
 }
 
-fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {
+fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>, input_states: &mut InputStates) {
     for (_, event) in glfw::flush_messages(events) {
         match event {
             glfw::WindowEvent::FramebufferSize(width, height) => {
@@ -126,7 +167,19 @@ fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::Windo
                 // height will be significantly larger than specified on retina displays.
                 unsafe { gl::Viewport(0, 0, width, height) }
             },
-            glfw::WindowEvent::MouseButton(btn, action, mods) => (),
+            glfw::WindowEvent::MouseButton(btn, action, mods) => {
+                if btn == MouseButton::Button1 {
+                    match action {
+                        Action::Release => input_states.mouse_left = false,
+                        Action::Press => input_states.mouse_left = true,
+                        _ => ()
+                    }
+                }
+            },
+            glfw::WindowEvent::CursorPos(width, height) => {
+                input_states.mouse_x = width;
+                input_states.mouse_y = height;
+            },
             glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
             _ => {}
         }

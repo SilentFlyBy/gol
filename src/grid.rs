@@ -16,6 +16,7 @@ impl Grid {
     }
 
     pub fn get_grid(&self, row: i64, col: i64, len: usize) -> Vec<bool> {
+        println!("{} {}", row, col);
         let mut result: Vec<bool> = Vec::with_capacity(len*len);
         for r in row..(row + len as i64) {
             for c in col..(col + len as i64) {
