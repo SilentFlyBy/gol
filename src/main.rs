@@ -1,6 +1,7 @@
 extern crate glfw;
 
 extern crate gl;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
 use gl::types::*;
@@ -16,7 +17,10 @@ use glfw::{Action, Context, Key, MouseButton};
 use std::{ptr, sync::mpsc::Receiver, mem, str};
 use grid::Grid;
 
+use crate::rle::RLE;
+
 mod grid;
+mod rle;
 
 const VERTEX_SHADER_SOURCE: &str = r#"
     #version 330 core
@@ -95,19 +99,66 @@ fn main() {
     let view_y_clone = Arc::clone(&view_y);
 
     thread::spawn(move || {
-        grid.set_cell(50, 50, true);
+        let s = r#"
+#N 104P177 reactions
+#O Jason Summers and Nicolay Beluchenko
+#C Some reactions involving a glider and 105P177
+#C http://www.conwaylife.com/wiki/index.php?title=104P177
+x = 377, y = 173, rule = b3/s23
+105bobo4bo14bo4bobo73bobo4bo14bo4bobo139b$7bobo4bo14bo4bobo68bobo3b3o
+12b3o3bobo73bobo3b3o12b3o3bobo139b$7bobo3b3o12b3o3bobo69bo4bo2bo10bo2b
+o4bo75bo4bo2bo10bo2bo4bo140b$8bo4bo2bo10bo2bo4bo76b3o10b3o87b3o10b3o
+146b$14b3o10b3o347b3$98b2o40b2o59b2o40b2o132b$2o40b2o56bo38bo63bo38bo
+134b$2bo38bo56b2o40b2o59b2o40b2o132b$2o40b2o333b3$99b2o38b2o61b2o38b2o
+133b$b2o38b2o55b2obo36bob2o59b2obo36bob2o132b$2obo36bob2o55bobo36bobo
+61bobo36bobo133b$bobo36bobo57b2o36b2o63b2o36b2o134b$2b2o36b2o335b10$
+100b2o36b2o63b2o36b2o134b$2b2o36b2o57bobo36bobo61bobo36bobo133b$bobo
+36bobo55b2obo36bob2o59b2obo36bob2o132b$2obo36bob2o55b2o38b2o61b2o38b2o
+133b$b2o38b2o334b3$98b2o40b2o59b2o40b2o132b$2o40b2o56bo38bo63bo38bo
+134b$2bo38bo56b2o40b2o59b2o40b2o132b$2o40b2o333b3$112b3o10b3o87b3o10b
+3o146b$14b3o10b3o76bo4bo2bo10bo2bo4bo75bo4bo2bo10bo2bo4bo140b$8bo4bo2b
+o10bo2bo4bo69bobo3b3o12b3o3bobo73bobo3b3o12b3o3bobo139b$7bobo3b3o12b3o
+3bobo68bobo4bo14bo4bobo73bobo4bo14bo4bobo139b$7bobo4bo14bo4bobo340b12$
+54b3o320b$54bo322b$55bo321b$187b2o81bo106b$186b2o81b2o106b$188bo80bobo
+105b26$7bobo4bo14bo4bobo340b$7bobo3b3o12b3o3bobo274bobo4bo14bo4bobo36b
+$8bo4bo2bo10bo2bo4bo68bobo4bo14bo4bobo81bobo4bo14bo4bobo66bobo3b3o12b
+3o3bobo36b$14b3o10b3o74bobo3b3o12b3o3bobo81bobo3b3o12b3o3bobo67bo4bo2b
+o10bo2bo4bo37b$105bo4bo2bo10bo2bo4bo83bo4bo2bo10bo2bo4bo74b3o10b3o43b$
+111b3o10b3o95b3o10b3o139b2$2o40b2o333b$2bo38bo262b2o40b2o29b$2o40b2o
+53b2o40b2o67b2o40b2o54bo38bo31b$99bo38bo71bo38bo54b2o40b2o29b$97b2o40b
+2o67b2o40b2o125b2$b2o38b2o334b$2obo36bob2o261b2o38b2o30b$bobo36bobo55b
+2o38b2o69b2o38b2o53b2obo36bob2o29b$2b2o36b2o55b2obo36bob2o67b2obo36bob
+2o53bobo36bobo30b$98bobo36bobo69bobo36bobo55b2o36b2o31b$99b2o36b2o71b
+2o36b2o127b5$144b3o230b$144bo232b$145bo228b3o$374bo2b$2b2o36b2o333bob$
+bobo36bobo263b2o36b2o31b$2obo36bob2o55b2o36b2o71b2o36b2o55bobo36bobo
+30b$b2o38b2o55bobo36bobo69bobo36bobo53b2obo36bob2o29b$97b2obo36bob2o
+67b2obo36bob2o53b2o38b2o30b$98b2o38b2o69b2o38b2o126b2$2o40b2o333b$2bo
+38bo262b2o40b2o29b$2o40b2o53b2o40b2o67b2o40b2o54bo38bo31b$99bo38bo71bo
+38bo54b2o40b2o29b$97b2o40b2o67b2o40b2o125b2$14b3o10b3o347b$8bo4bo2bo
+10bo2bo4bo282b3o10b3o43b$7bobo3b3o12b3o3bobo74b3o10b3o95b3o10b3o74bo4b
+o2bo10bo2bo4bo37b$7bobo4bo14bo4bobo68bo4bo2bo10bo2bo4bo83bo4bo2bo10bo
+2bo4bo67bobo3b3o12b3o3bobo36b$104bobo3b3o12b3o3bobo81bobo3b3o12b3o3bob
+o66bobo4bo14bo4bobo36b$104bobo4bo14bo4bobo81bobo4bo14bo4bobo132b17$85b
+2o290b$84b2o291b$86bo290b19$295b3o79b$295bo81b$296bo!
+"#;
+        let rle = RLE::from_str(s).unwrap();
+        /*grid.set_cell(50, 50, true);
         grid.set_cell(49, 50, true);
         grid.set_cell(49, 49, true);
         grid.set_cell(48, 50, true);
-        grid.set_cell(50, 51, true);
+        grid.set_cell(50, 51, true);*/
+        rle.set_grid(&mut grid);
         loop {
             let now = Instant::now();
             let x = view_x_clone.lock().unwrap().clone();
             let y = view_y_clone.lock().unwrap().clone();
-            tx.try_send(grid.get_grid(y, x, GRID_LENGTH));
+            match tx.try_send(grid.get_grid(y, x, GRID_LENGTH)) {
+                Ok(_) => (),
+                Err(_) => (),
+            };
             grid.calc_next_generation();
-            thread::sleep(time::Duration::from_millis(10));
-            println!("elapsed: {}", now.elapsed().as_millis());
+
+            thread::sleep(time::Duration::from_micros((50000  - now.elapsed().as_micros()) as u64));
         }
     });
 
