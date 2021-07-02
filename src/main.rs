@@ -89,8 +89,8 @@ fn main() {
     let mut mouse_last_left = false;
     
     
-    let mut view_x: Arc<Mutex<i64>> = Arc::new(Mutex::new(0));
-    let mut view_y: Arc<Mutex<i64>> = Arc::new(Mutex::new(0));
+    let view_x: Arc<Mutex<i64>> = Arc::new(Mutex::new(0));
+    let view_y: Arc<Mutex<i64>> = Arc::new(Mutex::new(0));
     
     
     let (tx, rx) = crossbeam_channel::bounded(1);

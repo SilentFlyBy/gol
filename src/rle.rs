@@ -1,11 +1,9 @@
 use std::str::FromStr;
-use regex::{Error, Regex};
-use lazy_static::lazy_static;
+use regex::{Regex};
 
 use crate::grid::Grid;
 
 extern crate regex;
-extern crate lazy_static;
 
 #[derive(Copy, Clone)]
 pub enum Tag {
