@@ -1,9 +1,15 @@
 use std::collections::HashMap;
 
+pub struct Rule {
+    pub become_alive: Vec<usize>,
+    pub stay_alive: Vec<usize>
+}
+
 pub struct Grid {
     first_hash_map: HashMap<(i64, i64), bool>,
     second_hash_map: HashMap<(i64, i64), bool>,
-    generation: bool
+    generation: bool,
+    rule: Rule
 }
 
 impl Grid {
@@ -11,8 +17,16 @@ impl Grid {
         return Grid {
             first_hash_map: HashMap::new(),
             second_hash_map: HashMap::new(),
-            generation: false
+            generation: false,
+            rule: Rule {
+                become_alive: vec![3],
+                stay_alive: vec![2, 3]
+            }
         }
+    }
+
+    pub fn set_rule(&mut self, rule: Rule) {
+        self.rule = rule;
     }
 
     pub fn get_grid(&self, row: i64, col: i64, len: usize) -> Vec<bool> {
@@ -98,7 +112,7 @@ impl Grid {
     }
 
     fn get_cell_next_generation(&self, row: i64, col: i64, val: bool) -> bool {
-        let mut neighbor_counter = 0;
+        let mut neighbor_counter: usize = 0;
     
         for neighbor_row in -1..2 {
             for neighbor_col in -1..2 {
@@ -109,22 +123,15 @@ impl Grid {
                 if self.get_cell(row + neighbor_row,  col + neighbor_col) {
                     neighbor_counter += 1;
                 }
-    
-                if neighbor_counter > 3 {
-                    return false;
-                }
             }
         }
 
         if !val {
-            return neighbor_counter == 3
+            return self.rule.become_alive.contains(&neighbor_counter);
         }
-    
-        if neighbor_counter < 2 {
-            return false
+        else {
+            return self.rule.stay_alive.contains(&neighbor_counter);
         }
-
-        return true;
     }
 }
 

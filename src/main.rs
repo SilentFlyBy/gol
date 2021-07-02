@@ -146,7 +146,7 @@ o66bobo4bo14bo4bobo36b$104bobo4bo14bo4bobo81bobo4bo14bo4bobo132b17$85b
         grid.set_cell(49, 49, true);
         grid.set_cell(48, 50, true);
         grid.set_cell(50, 51, true);*/
-        rle.set_grid(&mut grid);
+        rle.apply(&mut grid);
         loop {
             let now = Instant::now();
             let x = view_x_clone.lock().unwrap().clone();

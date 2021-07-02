@@ -1,3 +1,4 @@
+use crate::grid::Rule;
 use std::str::FromStr;
 use regex::{Regex};
 
@@ -26,13 +27,19 @@ pub struct RLE {
 
 const HEADER_REGEX_STRING: &str = r"^x\s?=\s?(\d+),\s?y\s?=\s?(\d+),\s?rule\s?=\s?(.+)$";
 const PATTERN_REGEX_STRING: &str = r"(\d*)([bo$])";
+const RULE_REGEX_STRING: &str = r"[Bb]?(\d+)\s*/\s*[Ss]?(\d+)";
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseRleError {}
 
 impl RLE {
-    pub fn set_grid(&self, grid: &mut Grid) {
+    pub fn apply(&self, grid: &mut Grid) {
+        self.set_grid(grid);
+        self.set_rule(grid);
+    }
+
+    fn set_grid(&self, grid: &mut Grid) {
         let mut row: i64 = 0;
         let mut col: i64 = 0;
         for (tag, count) in self.patterns.iter() {
@@ -52,6 +59,36 @@ impl RLE {
             }
         }
     }
+
+    fn set_rule(&self, grid: &mut Grid) {
+        let rule_regex = Regex::new(RULE_REGEX_STRING).unwrap();
+        if !rule_regex.is_match(self.rule.as_str()) {
+            return
+        }
+        let cap = rule_regex.captures(self.rule.as_str()).unwrap();
+
+        let mut become_alive: Vec<usize> = Vec::new();
+        let mut stay_alive: Vec<usize> = Vec::new();
+
+        let become_values = &cap[1];
+        let stay_values = &cap[2];
+
+        for c in become_values.chars() {
+            let num = c.to_digit(10).unwrap() as usize;
+            become_alive.push(num);
+        }
+
+        for c in stay_values.chars() {
+            let num = c.to_digit(10).unwrap() as usize;
+            stay_alive.push(num);
+        }
+
+        grid.set_rule(Rule {
+            become_alive,
+            stay_alive
+        });
+        
+    }
 }
 
 
@@ -62,6 +99,11 @@ impl FromStr for RLE {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let header_regex = Regex::new(HEADER_REGEX_STRING).unwrap();
         let pattern_regex = Regex::new(PATTERN_REGEX_STRING).unwrap();
+
+        let mut x: i64 = 0;
+        let mut y: i64 = 0;
+        let mut rule = String::new();
+
         let mut pattern_lines = String::new();
         for line in s.lines() {
             if line.starts_with("#") {
@@ -69,7 +111,11 @@ impl FromStr for RLE {
                 continue;
             }
             if header_regex.is_match(line) {
-                parse_header(line);
+                let (xval, yval, ruleval) = parse_header(line);
+                x = xval;
+                y = yval;
+                rule = ruleval;
+
                 continue;
             }
             
@@ -100,8 +146,8 @@ impl FromStr for RLE {
         Ok(RLE {
             author: String::from(""),
             name: String::from(""),
-            origin: (0, 0),
-            rule: String::from(""),
+            origin: (x, y),
+            rule,
             height: 0,
             width: 0,
             patterns
@@ -118,6 +164,9 @@ fn parse_header(s: &str) -> (i64, i64, String) {
     let cap = header_regex.captures(s).unwrap();
     let x = cap[1].parse::<i64>().unwrap();
     let y = cap[2].parse::<i64>().unwrap();
-    let rule = cap[3].to_string();
+    let rule = match cap.get(3) {
+        Some(m) => m.as_str().to_owned(),
+        None => "".to_owned(),
+    };
     return (x, y, rule)
 }
