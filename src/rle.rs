@@ -100,21 +100,27 @@ impl FromStr for RLE {
         let header_regex = Regex::new(HEADER_REGEX_STRING).unwrap();
         let pattern_regex = Regex::new(PATTERN_REGEX_STRING).unwrap();
 
-        let mut x: i64 = 0;
-        let mut y: i64 = 0;
+        let mut height = 0;
+        let mut width = 0;
+        let mut origin = (0, 0);
         let mut rule = String::new();
+        let mut name = String::new();
+        let mut author = String::new();
 
         let mut pattern_lines = String::new();
         for line in s.lines() {
             if line.starts_with("#") {
-                let (name, author, origin) = parse_comment(line);
+                let (nameval, authorval, originval) = parse_comment(line);
+                name = nameval;
+                author = authorval;
+                origin = originval;
                 continue;
             }
             if header_regex.is_match(line) {
-                let (xval, yval, ruleval) = parse_header(line);
-                x = xval;
-                y = yval;
+                let (widthval, heightval, ruleval) = parse_header(line);
                 rule = ruleval;
+                height = heightval;
+                width = widthval;
 
                 continue;
             }
@@ -144,12 +150,12 @@ impl FromStr for RLE {
         }
 
         Ok(RLE {
-            author: String::from(""),
-            name: String::from(""),
-            origin: (x, y),
+            author,
+            name,
+            origin,
             rule,
-            height: 0,
-            width: 0,
+            height,
+            width,
             patterns
         })
     }
@@ -159,11 +165,11 @@ fn parse_comment(s: &str) -> (String, String, (i64, i64)) {
     return (String::from(""), String::from(""), (0, 0))
 }
 
-fn parse_header(s: &str) -> (i64, i64, String) {
+fn parse_header(s: &str) -> (usize, usize, String) {
     let header_regex = Regex::new(HEADER_REGEX_STRING).unwrap();
     let cap = header_regex.captures(s).unwrap();
-    let x = cap[1].parse::<i64>().unwrap();
-    let y = cap[2].parse::<i64>().unwrap();
+    let x = cap[1].parse::<i64>().unwrap() as usize;
+    let y = cap[2].parse::<i64>().unwrap() as usize;
     let rule = match cap.get(3) {
         Some(m) => m.as_str().to_owned(),
         None => "".to_owned(),
