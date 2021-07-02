@@ -1,6 +1,7 @@
 extern crate glfw;
 
 extern crate gl;
+use std::io::Write;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -11,7 +12,7 @@ extern crate crossbeam_channel;
 use core::time;
 use std::ffi::CString;
 use std::os::raw::c_void;
-use std::thread;
+use std::{io, thread};
 use std::time::Instant;
 use glfw::{Action, Context, Key, MouseButton};
 use std::{ptr, sync::mpsc::Receiver, mem, str};
@@ -54,8 +55,6 @@ const VERTEX_ARRAY_SIZE: usize = GRID_LENGTH * GRID_LENGTH * CELL_SIZE;
 struct InputStates {
     mouse_x: f64,
     mouse_y: f64,
-    mouse_move_x: f64,
-    mouse_move_y: f64,
     mouse_left: bool
 }
 
@@ -84,7 +83,7 @@ fn main() {
     let shader_program = setup_shaders();
     let vao = setup_vertex_buffer();
     
-    let mut button_states = InputStates {mouse_x: 0.0, mouse_y: 0.0, mouse_move_x: 0.0, mouse_move_y: 0.0, mouse_left: false};
+    let mut button_states = InputStates {mouse_x: 0.0, mouse_y: 0.0, mouse_left: false};
     let mut mouse_last_x: f64 = 0.0;
     let mut mouse_last_y: f64 = 0.0;
     let mut mouse_last_left = false;
@@ -158,7 +157,11 @@ o66bobo4bo14bo4bobo36b$104bobo4bo14bo4bobo81bobo4bo14bo4bobo132b17$85b
             };
             grid.calc_next_generation();
 
-            thread::sleep(time::Duration::from_micros((50000  - now.elapsed().as_micros()) as u64));
+            let elapsed = now.elapsed().as_micros();
+            let delay_time = 50000;
+            let sleep_time = if elapsed <= delay_time {(delay_time - elapsed) as u64} else { 0};
+
+            thread::sleep(time::Duration::from_micros(sleep_time));
         }
     });
 
@@ -166,6 +169,7 @@ o66bobo4bo14bo4bobo36b$104bobo4bo14bo4bobo81bobo4bo14bo4bobo132b17$85b
     update_vertex_buffer(vao, &vtx_arr);
 
     while !window.should_close() {
+        let now = Instant::now();
         
         match rx.try_recv() {
             Ok(result) => {
@@ -207,6 +211,9 @@ o66bobo4bo14bo4bobo36b$104bobo4bo14bo4bobo81bobo4bo14bo4bobo132b17$85b
         
         window.swap_buffers();
         glfw.poll_events();
+
+        print!("\rRender Framerate: {0:>3} FPS", (1000000 / now.elapsed().as_micros()));
+        io::stdout().flush().unwrap();
     }
 }
 
