@@ -31,6 +31,8 @@ const VERTEX_SHADER_SOURCE: &str = r#"
 
     out float fragmentActive;
 
+    const float stepSize = 0.02;
+
     void main() {
         int cell = gl_VertexID / 6;
         int row = cell / gridLength;
@@ -41,19 +43,20 @@ const VERTEX_SHADER_SOURCE: &str = r#"
         float rowFloat = float(row);
         float gridLengthFloat = float(gridLength);
 
-        float stepSize = 0.02;
         float x = -1.0 + ((colFloat / gridLengthFloat) * 2.0);
         float y = 1.0 - ((rowFloat / gridLengthFloat) * 2.0);
 
-        if (vertexNr == 1 || vertexNr == 5) {
+
+
+        if (vertexNr == 1) {
             y = y - stepSize;
         }
         else if (vertexNr == 2 || vertexNr == 3) {
             x = x + stepSize;
+            y = y - stepSize;
         }
         else if (vertexNr == 4) {
             x = x + stepSize;
-            y = y - stepSize;
         }
 
         fragmentActive = vertexActive;
@@ -255,12 +258,12 @@ o14boo$347bobobo16boo$347b3obobbo$348bo3bo24boo$377bo$378b3o$380bo$
 bbo$337boo!
 "#;
         let rle = RLE::from_str(s).unwrap();
-        grid.set_cell(50, 50, true);
+        /*grid.set_cell(50, 50, true);
         grid.set_cell(49, 50, true);
         grid.set_cell(49, 49, true);
         grid.set_cell(48, 50, true);
-        grid.set_cell(50, 51, true);
-        //rle.apply(&mut grid);
+        grid.set_cell(50, 51, true);*/
+        rle.apply(&mut grid);
         loop {
             let now = Instant::now();
             let x = view_x_clone.lock().unwrap().clone();
@@ -319,7 +322,7 @@ bbo$337boo!
 
             gl::UseProgram(shader_program);
             gl::BindVertexArray(vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, (vtx_arr.len() / 2) as i32);
+            gl::DrawArrays(gl::TRIANGLES, 0, vtx_arr.len() as i32);
             gl::BindVertexArray(0);
         }
         
