@@ -29,17 +29,22 @@ impl Grid {
         self.rule = rule;
     }
 
-    pub fn get_grid(&self, row: i64, col: i64, len: usize) -> Vec<bool> {
-        let mut result: Vec<bool> = Vec::with_capacity(len*len * 6);
+    pub fn get_grid(&self, row: i64, col: i64, len: usize, result: &mut Vec<f32>) {
+        /*if self.generation {
+            for ((row, col), val) in &self.first_hash_map {
+
+            }
+        } else {
+            return get_cell_from_hashmap(row, col, &self.second_hash_map)
+        }*/
+        result.clear();
         for r in row..(row + len as i64) {
             for c in col..(col + len as i64) {                
                 for _ in 0..6 {
-                    result.push(self.get_cell(r, c));
+                    result.push(if self.get_cell(r, c) { 1.0 } else { 0.0 } );
                 }
             }
         }
-
-        return result
     }
 
     pub fn calc_next_generation(&mut self) {
