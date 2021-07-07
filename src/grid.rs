@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use nalgebra_glm::Vec2;
+
 pub struct Rule {
     pub become_alive: Vec<usize>,
     pub stay_alive: Vec<usize>
@@ -27,6 +29,22 @@ impl Grid {
 
     pub fn set_rule(&mut self, rule: Rule) {
         self.rule = rule;
+    }
+
+    pub fn get_active_cells(&self, result: &mut Vec<Vec2>) {
+        let current_hash_map = match self.generation {
+            true => &self.first_hash_map,
+            false => &self.second_hash_map
+        };
+
+        let mut i = 0;
+        for ((row, col), val) in current_hash_map.iter() {
+            result[i] = Vec2::new((*col) as f32, (*row) as f32);
+            i += 1;
+        }
+        for _ in i..result.len() {
+            result.remove(i);
+        }
     }
 
     pub fn get_grid(&self, row: i64, col: i64, len: usize, result: &mut Vec<f32>) {
