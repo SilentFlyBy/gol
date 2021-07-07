@@ -4,9 +4,26 @@ use gl::types::{GLfloat, GLsizei, GLsizeiptr, GLuint, GLvoid};
 use nalgebra_glm::{TVec, Vec2, Vec3};
 
 extern crate nalgebra_glm;
+pub trait CompCount {
+    fn component_count() -> i32;
+}
 
 pub type Mesh3 = Mesh<Vec3>;
 pub type Mesh2 = Mesh<Vec2>;
+
+impl CompCount for Vec2 {
+    fn component_count() -> i32 {
+        2
+    }
+}
+
+impl CompCount for Vec3 {
+    fn component_count() -> i32 {
+        3
+    }
+}
+
+
 
 pub struct Mesh<T> {
     vertices: Vec<T>,
@@ -16,7 +33,7 @@ pub struct Mesh<T> {
     gl_vertex_element_object: GLuint
 }
 
-impl<T> Mesh<T> {
+impl<T: CompCount> Mesh<T> {
     pub fn new(vertices: Vec<T>, indices: Vec<GLuint>) -> Mesh<T> {
         let (gl_vertex_array_object, gl_vertex_buffer_object, gl_vertex_element_object) = setup_vertex_buffer::<T>();
 
@@ -59,7 +76,7 @@ impl<T> Mesh<T> {
     }
 }
 
-fn setup_vertex_buffer<T>() -> (GLuint, GLuint, GLuint) {
+fn setup_vertex_buffer<T: CompCount>() -> (GLuint, GLuint, GLuint) {
     unsafe {
         let (mut vbo, mut vao, mut ebo) = (0, 0, 0);
         gl::GenVertexArrays(1, &mut vao);
@@ -69,7 +86,7 @@ fn setup_vertex_buffer<T>() -> (GLuint, GLuint, GLuint) {
 
         gl::EnableVertexAttribArray(0);
         
-        gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, mem::size_of::<T>() as GLsizei, ptr::null());
+        gl::VertexAttribPointer(0, T::component_count(), gl::FLOAT, gl::FALSE, mem::size_of::<T>() as GLsizei, ptr::null());
 
         gl::GenBuffers(1, &mut ebo);
         gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ebo);
